@@ -1,0 +1,4 @@
+exportPattern("^SIG")
+export(fork, readChild, readChildren, selectChildren, children, kill, exit, sendMaster)
+export(mclapply, parallel, collect)
+useDynLib(multicore)

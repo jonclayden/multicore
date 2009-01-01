@@ -1,0 +1,10 @@
+Package: multicore
+Version: 0.1-0
+Title: Parallel processing on machines with multiple cores or CPUs
+Author: Simon Urbanek <Simon.Urbanek@r-project.org>
+Maintainer: Simon Urbanek <Simon.Urbanek@r-project.org>
+Depends: R (>= 2.0.0)
+Description: This package prodives a way of running parallel computations in R on machines with multiple cores or CPUs. Jobs can share the entire initial workspace and provides methods for results collection.
+License: GPL version 2
+SystemRequirements: POSIX-compliant OS (essentially anything but Windows)
+URL: http://www.rforge.net/multicore/
