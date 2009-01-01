@@ -1,7 +1,7 @@
 mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.cores=getOption("cores")) {
   env <- parent.frame()
   cores <- mc.cores
-  if (is.null(cores)) cores <- 8
+  if (is.null(cores)) cores <- volatile$detectedCores
   cores <- as.integer(cores)
   if (length(X) < cores) cores <- length(X)
   if (cores < 2) return(lapply(X, FUN, ...))

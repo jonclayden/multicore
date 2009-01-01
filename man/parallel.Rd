@@ -5,9 +5,9 @@
   Evaluate an expression asynchronously in a separate process
 }
 \description{
-  \code{parallel} starts a parallel process which evalated the given expression.
+  \code{parallel} starts a parallel process which evaluates the given expression.
 
-  \code{collects} results from parallel processes
+  \code{collect} collects results from parallel processes.
 }
 \usage{
 parallel(expr, mc.set.seed = FALSE)

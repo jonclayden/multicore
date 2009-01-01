@@ -235,7 +235,7 @@ static SEXP read_child_ci(child_info_t *ci) {
 }
 
 SEXP read_child(SEXP sPid) {
-	int pid = asInteger(sPid), fd;
+	int pid = asInteger(sPid);
 	child_info_t *ci = &children;
 	while (ci) {
 		if (ci->pid == pid) break;

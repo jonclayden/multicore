@@ -39,12 +39,12 @@ clean exit, 1 an error.}
 
   If you are not familiar with the \code{fork} system call, do not
   use this function since it leads to very complex inter-process
-  interactions aomng the R processes involved.
+  interactions among the R processes involved.
 
-  In a nutshell \code{fork} spwans a copy (child) of the current
-  process, that can work in parallel to the master proess. At the
-  point of forking both processes share exactly the same state
-  including the workspace, global options, loaded packages
+  In a nutshell \code{fork} spawns a copy (child) of the current
+  process, that can work in parallel to the master (parent)
+  process. At the point of forking both processes share exactly the
+  same state including the workspace, global options, loaded packages
   etc. Forking is relatively cheap in modern operating systems and no
   real copy of the used memory is created, instead both processes
   share the same memory and only modified parts are copied. This makes
@@ -53,7 +53,8 @@ clean exit, 1 an error.}
   shared automatically from the start.
 }
 \note{
-  Windows opearting system lacks the \code{fork} system call so it cannot be used with multicore.
+  Windows opearting system lacks the \code{fork} system call so it
+  cannot be used with multicore.
 }
 \seealso{
   \code{\link{parallel}}, \code{\link{sendMaster}}
