@@ -1,4 +1,5 @@
 \name{signals}
+\alias{signals}
 \alias{SIGALRM}
 \alias{SIGCHLD}
 \alias{SIGHUP}
