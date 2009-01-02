@@ -19,7 +19,7 @@
 
 typedef struct child_info {
 	pid_t pid;
-	int pfd;
+	int pfd, sifd;
 	struct child_info *next;
 } child_info_t;
 
@@ -53,12 +53,18 @@ static int rm_child_(int pid) {
 	return 0;
 }
 
+#ifndef STDIN_FILENO
+#define STDIN_FILENO 0
+#endif
+
 SEXP mc_fork() {
 	int pipefd[2];
+	int sipfd[2];
 	pid_t pid;
-	SEXP res = allocVector(INTSXP, 2);
+	SEXP res = allocVector(INTSXP, 3);
 	int *res_i = INTEGER(res);
 	if (pipe(pipefd)) error("Unable to create a pipe.");
+	if (pipe(sipfd)) error("Unable to create a pipe.");
 	pid = fork();
 	if (pid == -1) error("Unable to fork.");
 	res_i[0] = (int) pid;
@@ -66,6 +72,9 @@ SEXP mc_fork() {
 		close(pipefd[0]); /* close read end */
 		master_fd = res_i[1] = pipefd[1];
 		is_master = 0;
+		/* re-map stdin */
+		dup2(sipfd[0], STDIN_FILENO);
+		close(sipfd[0]);
 #if 0
 		/* remap stdin/out/err */
 		{
@@ -92,8 +101,10 @@ SEXP mc_fork() {
 #endif
 	} else { /* master process */
 		child_info_t *ci;
-		close(pipefd[1]); /* close write end */
+		close(pipefd[1]); /* close write end of the data pipe */
+		close(sipfd[0]);  /* close read end of the child-stdin pipe */
 		res_i[1] = pipefd[0];
+		res_i[2] = sipfd[1];
 		/* register the new child and its pipe */
 		if (children.pid == 0)
 			ci = &children;
@@ -102,6 +113,7 @@ SEXP mc_fork() {
 		if (!ci) error("Memory allocation error.");
 		ci->pid = pid;
 		ci->pfd = pipefd[0];
+		ci->sifd= sipfd[1];
 		ci->next = 0;
 		last_child = ci;
 	}
@@ -128,6 +140,30 @@ SEXP send_master(SEXP what) {
 			master_fd = -1;
 			error("write error, closing pipe to the master");
 		}
+		i += n;
+	}
+	return ScalarLogical(1);
+}
+
+SEXP send_child_stdin(SEXP sPid, SEXP what) {
+	unsigned char *b;
+	unsigned int len = 0, i = 0, fd;
+	int pid = asInteger(sPid);
+	if (!is_master) error("only master (parent) process can send data to a child process");
+	if (TYPEOF(what) != RAWSXP) error("what must be a raw vector");
+	child_info_t *ci = &children;
+	while (ci) {
+		if (ci->pid == pid) break;
+		ci = ci -> next;
+	}
+	if (!ci) error("child %d doesn't exist", pid);
+	len = LENGTH(what);
+	b = RAW(what);
+	fd = ci -> sifd;
+	while (i < len) {
+		int n = write(fd, b + i, len - i);
+		if (n < 1)
+			error("write error");
 		i += n;
 	}
 	return ScalarLogical(1);

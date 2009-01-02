@@ -1,5 +1,9 @@
 \name{multicore}
 \alias{multicore}
+\alias{process}
+\alias{childProcess}
+\alias{masterProcess}
+\alias{parallelJob}
 \title{
   multicore R package for parallel processing of R code
 }

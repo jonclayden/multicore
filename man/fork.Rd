@@ -35,7 +35,9 @@ clean exit, 1 an error.}
   The \code{fork} function provides an interface to the \code{fork}
   system call. In addition it sets up a pipe between the master and
   child process that can be used to send data from the child process
-  to the master.
+  to the master (see \code{\link{sendMaster}}) and child's stdin is
+  re-mapped to another pipe held by the master process (see
+  \code{link{sendChildStdin}}).
 
   If you are not familiar with the \code{fork} system call, do not
   use this function since it leads to very complex inter-process
@@ -51,6 +53,12 @@ clean exit, 1 an error.}
   \code{fork} an ideal tool for parallel processing since there is no
   need to setup the parallel working environment, data and code is
   shared automatically from the start.
+
+  It is \emph{strongly discouraged} to use \code{fork} in GUI or
+  embedded environments, because it leads to several processes sharing
+  the same GUI which will likely cause chaos (and possibly
+  crashes). Child processes should never use on-screen graphics
+  devices.
 }
 \note{
   Windows opearting system lacks the \code{fork} system call so it
