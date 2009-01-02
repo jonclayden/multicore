@@ -14,10 +14,11 @@ parallel(expr, mc.set.seed = FALSE)
 collect(jobs, wait = TRUE, timeout = 0, intermediate = FALSE)
 }
 \arguments{
-\item{expr}{expression to evaluate}
+\item{expr}{expression to evaluate (do \emph{not} use any on-screen
+devices or GUI elements in this code)}
 \item{mc.set.seed}{if set to \code{TRUE} then the random number
-generator is seeded such that it is differen from any other
-process. Othewise the same as in the current R session.}
+generator is seeded such that it is different from any other
+process. Otherwise it will be the same as in the current R session.}
 \item{jobs}{list of jobs (or a single job) to collect results
 for. Alternatively \code{jobs} can also be an integer vector of
 process IDs. If omitted \code{collect} will wait for all currently
@@ -27,7 +28,7 @@ available within \code{timeout} seconds from now, otherwise it waits
 for all specified jobs to finish.}
 \item{timeout}{timeout (in seconds) to check for job results - applies
 only if \code{wait} is \code{FALSE}.}
-\item{intermediate}{can be a function which will be called while
+\item{intermediate}{\code{FALSE} or a function which will be called while
 \code{collect} waits for results. The function will be called with one
 parameter which is the list of results received so far.}
 }
@@ -39,10 +40,11 @@ parameter which is the list of results received so far.}
 }
 \details{
   \code{parallel} evaluates the \code{expr} expression in parallel to
-  the current R process. Everything is shared read-only between the
-  parallel process and the current process, i.e. no side-effects of
-  the expression affect the main process. The result of the parallel
-  execution can be collected using \code{collect} function.
+  the current R process. Everything is shared read-only (or in fact
+  copy-on-write) between the parallel process and the current process,
+  i.e. no side-effects of the expression affect the main process. The
+  result of the parallel execution can be collected using
+  \code{collect} function.
 
   \code{collect} function collects any available results from parallel
   jobs (or in fact any child process). If \code{wait} is \code{TRUE}
@@ -50,7 +52,8 @@ parameter which is the list of results received so far.}
   returning a list containing the last reported result for each
   job. If \code{wait} is \code{FALSE} then \code{collect} merely
   checks for any results available at the moment and will not wait for
-  jobs to finish.
+  jobs to finish. If \code{jobs} is specified, jobs not listed there
+  will not be affected or acted upon.
 
   Note: If \code{expr} uses low-level \code{multicore} functions such
   as \code{\link{sendMaster}} a single job can deliver results

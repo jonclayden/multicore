@@ -16,7 +16,7 @@
   \code{selectChildren} checks children for available data
 
   \code{readChildren} checks children for available data and reads
-  data the first available child
+  from the first child that has available data
 
   \code{sendChildStdin} sends string (or data) to child's standard input
 
@@ -44,11 +44,13 @@ discouraged as it blocks R and may be removed in the future).}
 \item{children}{list of child processes or a single child process
 object or a vector of process IDs or \code{NULL}. If \code{NULL}
 behaves as if all currently known children were supplied.}
-\item{what}{character or raw vector. In the former case elements are collapsed using the newline chracter. (But no trailing newline is added at the end!)}
+\item{what}{character or raw vector. In the former case elements are
+collapsed using the newline chracter. (But no trailing newline is
+added at the end!)}
 \item{process}{process (object of the class \code{process}) or a
 process ID (pid)}
-\item{signal}{signal to send (one of \code{SIG...} constants or a
-valid integer signal number)}
+\item{signal}{signal to send (one of \code{SIG...} constants -- see
+\code{\link{signals}} -- or a valid integer signal number)}
 }
 \value{
   \code{children} returns a list of child processes (or an empty list)
