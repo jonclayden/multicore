@@ -11,25 +11,31 @@
 }
 \usage{
 parallel(expr, mc.set.seed = FALSE)
-collect(jobs, wait = TRUE, timeout = 0)
+collect(jobs, wait = TRUE, timeout = 0, intermediate = FALSE)
 }
 \arguments{
 \item{expr}{expression to evaluate}
 \item{mc.set.seed}{if set to \code{TRUE} then the random number
 generator is seeded such that it is differen from any other
 process. Othewise the same as in the current R session.}
-\item{jobs}{list of jobs (or a single) job to collect results for}
+\item{jobs}{list of jobs (or a single job) to collect results
+for. Alternatively \code{jobs} can also be an integer vector of
+process IDs. If omitted \code{collect} will wait for all currently
+existing children.}
 \item{wait}{if set to \code{FALSE} it checks for any results that are
 available within \code{timeout} seconds from now, otherwise it waits
-for all jobs to deliver results.}
+for all specified jobs to finish.}
 \item{timeout}{timeout (in seconds) to check for job results - applies
 only if \code{wait} is \code{FALSE}.}
+\item{intermediate}{can be a function which will be called while
+\code{collect} waits for results. The function will be called with one
+parameter which is the list of results received so far.}
 }
 \value{
   \code{parallel} returns an object of the class \code{parallelJob}
   which is in turn a \code{childProcess}.
 
-  \code{collect} returns any results that are available in a list
+  \code{collect} returns any results that are available in a list.
 }
 \details{
   \code{parallel} evaluates the \code{expr} expression in parallel to
@@ -39,7 +45,12 @@ only if \code{wait} is \code{FALSE}.}
   execution can be collected using \code{collect} function.
 
   \code{collect} function collects any available results from parallel
-  jobs.
+  jobs (or in fact any child process). If \code{wait} is \code{TRUE}
+  then \code{collect} waits for all specified jobs to finish before
+  returning a list containing the last reported result for each
+  job. If \code{wait} is \code{FALSE} then \code{collect} merely
+  checks for any results available at the moment and will not wait for
+  jobs to finish.
 
   Note: If \code{expr} uses low-level \code{multicore} functions such
   as \code{\link{sendMaster}} a single job can deliver results
@@ -53,9 +64,13 @@ only if \code{wait} is \code{FALSE}.}
 }
 \examples{
   p <- parallel(1:10)
-  collect(p) # will retrieve the result
-  collect(p) # will signal the job as terminating
-  collect(p) # there is no such job
+  q <- parallel(1:20)
+  collect(list(p, q)) # wait for jobs to finish and collect all results
+
+  p <- parallel(1:10)
+  collect(p, wait=FALSE, 10) # will retrieve the result (since it's fast)
+  collect(p, wait=FALSE) # will signal the job as terminating
+  collect(p, wait=FALSE) # there is no such job
 }
 \author{Simon Urbanek}
 \keyword{interface}

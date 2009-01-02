@@ -1,25 +1,26 @@
+# this envoronment holda any volatile variables we may want to keep inside the package
 volatile <- new.env(TRUE, emptyenv())
 
-.onLoad <- function(libname, pkgname) {
-  # try to detect the number of cores
-  cores <- 8 # a rather optimisitc fallback
-  if (length(grep("^darwin",R.version$os))) { # on Mac OS X uses sysctl
-    a <- system("/usr/sbin/sysctl -n hw.ncpu 2>/dev/null", TRUE)
-    if (length(a) && nchar(a[1])) cores <- as.integer(a[1])
-  } else {
-    # Linux
-    a <- system("grep processor /proc/cpuinfo 2>/dev/null|wc -l", TRUE)
-    if (length(a) && nchar(a[1])) cores <- as.integer(a[1])
-    else { # IRIX
-      a <- system("hinv 2>/dev/null | grep -i processor | sed 's: .*::'", TRUE)
-      if (length(a) && nchar(a[1])) cores <- as.integer(a[1])
-      else { # Solaris
-        a <- system("/usr/sbin/psrinfo -v|grep 'Status of processor'|wc -l", TRUE)
-        if (length(a) && nchar(a[1])) cores <- as.integer(a[1])
+# detect the number of [virtual] CPUs (cores)
+detectCores <- function(all.tests = FALSE) {
+  # feel free to add tests - those are the only ones I could test [SU]
+  systems <- list(darwin  = "/usr/sbin/sysctl -n hw.ncpu 2>/dev/null",
+                  linux   = "grep processor /proc/cpuinfo 2>/dev/null|wc -l",
+		  irix    = c("hinv |grep Processors|sed 's: .*::'", "hinv|grep '^Processor '|wc -l"),
+		  solaris = "/usr/sbin/psrinfo -v|grep 'Status of.*processor'|wc -l")
+  for (i in seq(systems))
+    if(all.tests || length(grep(paste("^", names(systems)[i], sep=''), R.version$os)))
+      for (cmd in systems[i]) {
+        a <- system(cmd, TRUE)[1]
+        if (length(grep("^[1-9]", a))) return(as.integer(a))
       }
-    }
-  }
-  if (cores < 1) cores <- 4
+  NA
+}
+
+.onLoad <- function(libname, pkgname) {
+  cores <- detectCores()
+  volatile$detectedCoresSuccess <- !is.na(cores)
+  if (is.na(cores)) cores <- 8L # a fallback expecting higher-end desktop ...
   volatile$detectedCores <- cores
   TRUE
 }

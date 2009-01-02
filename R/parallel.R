@@ -11,13 +11,31 @@ parallel <- function(expr, mc.set.seed=FALSE) {
   f
 }
 
-collect <- function(jobs, wait=TRUE, timeout=0) {
+collect <- function(jobs, wait=TRUE, timeout=0, intermediate=FALSE) {
+  if (missing(jobs)) jobs <- children()
+  if (isTRUE(intermediate)) intermediate <- str
   if (!wait) {
     s <- selectChildren(jobs, timeout)
     if (is.logical(s) || !length(s)) return(NULL)
     lapply(s, function(x) { r <- readChild(x); if (is.raw(r)) unserialize(r) else NULL })
   } else {
-    # FIXME: this is not really what we want to do - replace with proper implementation later
-    collect(jobs, FALSE, 30)
+    pids <- if (inherits(jobs, "process")) jobs$pid else if (is.list(jobs)) unlist(lapply(jobs, function(x) x$pid)) else jobs
+    if (!length(pids)) pids <- children()
+    if (!length(pids)) return(NULL)
+    res <- list()
+    fin <- rep(FALSE, length(jobs))
+    while (!all(fin)) {
+      s <- selectChildren(pids, 0.5)
+      if (is.integer(s)) {
+        for (pid in s) {
+          r <- readChild(pid)
+          if (is.integer(r) || is.null(r)) fin[pid==pids] <- TRUE
+          if (is.raw(r)) res[[which(pid==pids)]] <- unserialize(r)
+        }
+        if (is.function(intermediate)) intermediate(res)
+      } else if (all(is.na(match(pids, children())))) break
+    }
+    names(res) <- pids
+    res
   }
 }
