@@ -72,3 +72,24 @@ children <- function() {
   p <- .Call("mc_children", PACKAGE="multicore")
   lapply(p, function(x) structure(list(pid=x), class=c("childProcess", "process")))
 }
+
+childrenDescriptors <- function(index=0L)
+  .Call("mc_fds", as.integer(index), PACKAGE="multicore")
+
+masterDescriptor <- function() .Call("mc_master_fd", PACKAGE="multicore")
+
+isChild <- function() .Call("mc_is_child", PACKAGE="multicore")
+
+# those could be really written as closeFD(1L) and closeFD(2L), but historically ...
+closeStdout <- function() .Call("close_stdout", PACKAGE="multicore")
+closeStderr <- function() .Call("close_stderr", PACKAGE="multicore")
+closeFD <- function(fds) .Call("close_fds", as.integer(fds), PACKAGE="multicore")
+closeAll <- function(includeStd=FALSE) {
+  if (!isChild()) { warning("closeAll() is a no-op in the master process"); return(invisible(FALSE)) }
+  fds <- masterDescriptor()
+  if (identical(fds, -1L)) fds <- integer(0)
+  if (includeStd) fds <- c(1L, 2L, fds)
+  mf <- max(fds) + 16L # take a few more ...
+  # close all but those that we actually use
+  closeFD((1:mf)[-fds])
+}

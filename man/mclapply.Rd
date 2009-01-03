@@ -10,7 +10,7 @@
   element of \code{X}.
 }
 \usage{
-mclapply(X, FUN, ..., mc.set.seed = TRUE, mc.cores = getOption("cores"))
+mclapply(X, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("cores"))
 }
 \arguments{
 \item{X}{a vector (atomic or list) or an expressions vector.  Other
@@ -22,6 +22,8 @@ objects (including classed objects) will be coerced by
 first sets its seed to something different from other
 processes. Otherwise all processes start with the same (namely
 current) seed.}
+\item{mc.silent}{if set to \code{TRUE} then all output on stdout will be
+suppressed for all parallel processes spawned (stderr is not affected).}
 \item{mc.cores}{The number of cores to use, i.e. how many processes
 will be spawned (at most)}
 }

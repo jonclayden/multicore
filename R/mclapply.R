@@ -1,4 +1,4 @@
-mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.cores=getOption("cores")) {
+mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOption("cores")) {
   env <- parent.frame()
   cores <- mc.cores
   if (is.null(cores)) cores <- volatile$detectedCores
@@ -18,6 +18,7 @@ mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.cores=getOption("cores"))
     if (inherits(f, "masterProcess")) { # child process
       on.exit(exit(1,structure("fatal error in wrapper code",class="try-error")))
       if (isTRUE(mc.set.seed)) set.seed(Sys.getpid())
+      if (isTRUE(mc.silent)) closeStdout()
       sendMaster(try(lapply(S, FUN, ...), silent=TRUE))
       exit(0)
     }
@@ -26,7 +27,6 @@ mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.cores=getOption("cores"))
     NULL
   }
   lapply(1:cores, inner.do)
-  print(cp)
   while (!all(fin)) {
     a <- readChildren(1)
     if (!length(a)) break # no children -> no hope we get anything

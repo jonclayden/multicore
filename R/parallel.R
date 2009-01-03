@@ -1,9 +1,10 @@
-parallel <- function(expr, name, mc.set.seed=FALSE) {
+parallel <- function(expr, name, mc.set.seed=FALSE, silent=FALSE) {
   f <- fork()
   env <- parent.frame()
   if (inherits(f, "masterProcess")) {
     on.exit(exit(1, structure("fatal error in wrapper code",class="try-error")))
     if (isTRUE(mc.set.seed)) set.seed(Sys.getpid())
+    if (isTRUE(silent)) closeStdout()
     sendMaster(try(eval(expr, env), silent=TRUE))
     exit(0)
   }

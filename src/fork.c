@@ -66,6 +66,9 @@ static int rm_child_(int pid) {
 #ifndef STDOUT_FILENO
 #define STDOUT_FILENO 1
 #endif
+#ifndef STDERR_FILENO
+#define STDERR_FILENO 2
+#endif
 
 SEXP mc_fork() {
 	int pipefd[2];
@@ -140,6 +143,20 @@ SEXP mc_fork() {
 SEXP close_stdout() {
 	close(STDOUT_FILENO);
 	return R_NilValue;
+}
+
+SEXP close_stderr() {
+	close(STDERR_FILENO);
+	return R_NilValue;
+}
+
+SEXP close_fds(SEXP sFDS) {
+	int *fd, fds, i = 0;
+	if (TYPEOF(sFDS) != INTSXP) error("descriptors must be integers");
+	fds = LENGTH(sFDS);
+	fd = INTEGER(sFDS);
+	while (i < fds) close(fd[i++]);
+	return ScalarLogical(1);
 }
 
 SEXP send_master(SEXP what) {
@@ -392,6 +409,36 @@ SEXP mc_children() {
 		}
 	}
 	return res;
+}
+
+SEXP mc_fds(SEXP sFdi) {
+	int fdi = asInteger(sFdi);
+	unsigned int count = 0;
+	SEXP res;
+	child_info_t *ci = &children;
+	while (ci && ci->pid > 0) {
+		count++;
+		ci = ci->next;
+	}
+	res = allocVector(INTSXP, count);
+	if (count) {
+		int *fds = INTEGER(res);
+		ci = &children;
+		while (ci && ci->pid > 0) {
+			(fds++)[0] = (fdi == 0) ? ci->pfd : ci->sifd;
+			ci = ci->next;
+		}
+	}
+	return res;
+}
+
+
+SEXP mc_master_fd() {
+	return ScalarInteger(master_fd);
+}
+
+SEXP mc_is_child() {
+	return ScalarLogical(is_master?0:1);
 }
 
 SEXP mc_kill(SEXP sPid, SEXP sSig) {

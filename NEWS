@@ -2,6 +2,14 @@
 ------------------------------
 
 0.1-2	(under development)
+    o	added "silent" parmeter to parallel() and mclapply()
+	suppressing output on stdout in child processes
+
+    o	added internal functions closeStdout(), closeStrerr(),
+	closeFD(), closeAll(), isChild(), childrenDescriptors() and
+	masterDescriptor()
+
+    o	removed spurious debugging output in mclapply()
 
 0.1-1	2009-01-03
     o	added name parameter to parallel(), accordingly collect()

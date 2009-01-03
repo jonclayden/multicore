@@ -81,6 +81,11 @@ elements. This can cause havoc since let's say one window now suddenly
 belongs to two processes. Therefore \emph{multicomp} should be
 preferrably used in console R and code executed in parallel may
 never use GUIs or on-screen devices.
+
+An (experimental) way to avoid some such problems in some GUI
+environments (those using pipes or sockets) is to use
+\code{multicore:::closeAll()} in each child process immediately after
+it is spawned.
 }
 \seealso{
   \code{\link{parallel}}, \code{\link{mclapply}},
