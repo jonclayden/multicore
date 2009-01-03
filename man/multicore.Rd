@@ -57,15 +57,16 @@ option is not set, \emph{multicore} uses by default as many cores as
 there are available.
 
 The number of available cores is determined on startup using the
-(non-exported) \core{detectCores()} function. It should work on most
+(non-exported) \code{detectCores()} function. It should work on most
 commonly used unix systems (Mac OS X, Linux, Solaris and IRIX), but
 there is no standard way of determining the number of cores, so
 please contact me (with \code{sessionInfo()} output and the test) if
 you have tests for other platforms. If in doubt, use
 \code{multicore:::detectCores(all.tests=TRUE)} to see whether your
 platform is covered by one of the already existing tests. If multicore
-cannot determine the number of cores, it will default to 8 (which
-should be fine for most modern desktop systems).
+cannot determine the number of cores (the above returns \code{NA}), it
+will default to 8 (which should be fine for most modern desktop
+systems).
 }
 \section{Warning}{
 \emph{multicore} uses the \code{fork} system call to spawn a copy of
