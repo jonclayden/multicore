@@ -31,11 +31,9 @@ mclapply <- function(X, FUN, ..., mc.set.seed=TRUE, mc.cores=getOption("cores"))
     a <- readChildren(1)
     if (!length(a)) break # no children -> no hope we get anything
     if (is.integer(a)) { 
-      str(a)
       core <- which(cp == a)
       fin[core] <- TRUE
     } else if (is.raw(a)) {
-      str(a)
       core <- which(cp == attr(a, "pid"))
       res[[core]] <- unserialize(a)
       dr[core] <- TRUE
