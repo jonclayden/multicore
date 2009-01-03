@@ -1,5 +1,5 @@
 Package: multicore
-Version: 0.1-1
+Version: 0.1-2
 Title: Parallel processing of R code on machines with multiple cores or CPUs
 Author: Simon Urbanek <Simon.Urbanek@r-project.org>
 Maintainer: Simon Urbanek <Simon.Urbanek@r-project.org>

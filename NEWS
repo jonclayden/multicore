@@ -1,6 +1,8 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
+0.1-2	(under development)
+
 0.1-1	2009-01-03
     o	added name parameter to parallel(), accordingly collect()
 	names the results if the job name is present

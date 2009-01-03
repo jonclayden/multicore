@@ -139,6 +139,7 @@ SEXP mc_fork() {
 
 SEXP close_stdout() {
 	close(STDOUT_FILENO);
+	return R_NilValue;
 }
 
 SEXP send_master(SEXP what) {
