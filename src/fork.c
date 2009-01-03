@@ -17,6 +17,9 @@
 #include <R.h>
 #include <Rinternals.h>
 
+/* use printf instead of Rprintf for debugging to avoid forked console interactions */
+#define Dprintf printf
+
 typedef struct child_info {
 	pid_t pid;
 	int pfd, sifd;
@@ -30,6 +33,9 @@ static int is_master = 1;
 
 static int rm_child_(int pid) {
 	child_info_t *ci = &children, *prev = 0;
+#ifdef MC_DEBUG
+	Dprintf("removing child %d\n", pid);
+#endif
 	while (ci) {
 		if (ci->pid == pid) {
 			if (!prev) {
@@ -48,6 +54,7 @@ static int rm_child_(int pid) {
 				return 1;
 			}
 		}
+		prev = ci;
 		ci = ci->next;
 	}
 	return 0;
@@ -55,6 +62,9 @@ static int rm_child_(int pid) {
 
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
+#endif
+#ifndef STDOUT_FILENO
+#define STDOUT_FILENO 1
 #endif
 
 SEXP mc_fork() {
@@ -99,12 +109,19 @@ SEXP mc_fork() {
 			// stdinFD=pfd[1];
 		}
 #endif
+#ifdef MC_DEBUG
+		Dprintf("child process %d started\n", getpid());
+#endif
+		
 	} else { /* master process */
 		child_info_t *ci;
 		close(pipefd[1]); /* close write end of the data pipe */
 		close(sipfd[0]);  /* close read end of the child-stdin pipe */
 		res_i[1] = pipefd[0];
 		res_i[2] = sipfd[1];
+#ifdef MC_DEBUG
+		Dprintf("parent registers new child %d\n", pid);
+#endif
 		/* register the new child and its pipe */
 		if (children.pid == 0)
 			ci = &children;
@@ -120,6 +137,10 @@ SEXP mc_fork() {
 	return res;
 }
 
+SEXP close_stdout() {
+	close(STDOUT_FILENO);
+}
+
 SEXP send_master(SEXP what) {
 	unsigned char *b;
 	unsigned int len = 0, i = 0;
@@ -128,6 +149,9 @@ SEXP send_master(SEXP what) {
 	if (TYPEOF(what) != RAWSXP) error("content to send must be RAW, use serialize if needed");
 	len = LENGTH(what);
 	b = RAW(what);
+#ifdef MC_DEBUG
+	Dprintf("child %d: send_master (%d bytes)\n", getpid(), len);
+#endif
 	if (write(master_fd, &len, sizeof(len)) != sizeof(len)) {
 		close(master_fd);
 		master_fd = -1;
@@ -203,12 +227,12 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Rprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, timeout=%d:%d\n", maxfd, wlen, wcount, tv.tv_sec, tv.tv_usec);
+	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, timeout=%d:%d\n", maxfd, wlen, wcount, tv.tv_sec, tv.tv_usec);
 #endif
 	if (maxfd == 0 || (wlen && !wcount)) return R_NilValue; /* NULL signifies no children to tend to */
 	sr = select(maxfd + 1, &fs, 0, 0, tvp);
 #ifdef MC_DEBUG
-	Rprintf("  sr = %d\n", sr);
+	Dprintf("  sr = %d\n", sr);
 #endif
 	if (sr < 0) {
 		perror("select");
@@ -222,12 +246,21 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		ci = ci -> next;
 	}
 	ci = &children;
+#ifdef MC_DEBUG
+	Dprintf(" - read select %d children: ", maxfd);
+#endif
 	res = allocVector(INTSXP, maxfd);
 	res_i = INTEGER(res);
 	while (ci && ci->pid) { /* pass 2 - fill the array */
 		if (ci->pfd > 0 && FD_ISSET(ci->pfd, &fs)) (res_i++)[0] = ci->pid;
+#ifdef MC_DEBUG
+		if (ci->pfd > 0 && FD_ISSET(ci->pfd, &fs)) Dprintf("%d ", ci->pid);
+#endif
 		ci = ci -> next;
 	}
+#ifdef MC_DEBUG
+	Dprintf("\n");
+#endif
 	return res;
 }
 
@@ -236,7 +269,7 @@ static SEXP read_child_ci(child_info_t *ci) {
 	int fd = ci->pfd;
 	int n = read(fd, &len, sizeof(len));
 #ifdef MC_DEBUG
-	Rprintf(" read_child_ci - read length returned %d\n", n);
+	Dprintf(" read_child_ci(%d) - read length returned %d\n", ci->pid, n);
 #endif
 	if (n != sizeof(len) || len == 0) { /* error or child is exiting */
 		int pid = ci->pid;
@@ -251,7 +284,7 @@ static SEXP read_child_ci(child_info_t *ci) {
 		while (i < len) {
 			n = read(fd, rvb + i, len - i);
 #ifdef MC_DEBUG
-			Rprintf(" read_child_ci - read %d at %d returned %d\n", len-i, i, n);
+			Dprintf(" read_child_ci(%d) - read %d at %d returned %d\n", ci->pid, len-i, i, n);
 #endif
 			if (n < 1) {
 				close(fd);
@@ -277,6 +310,9 @@ SEXP read_child(SEXP sPid) {
 		if (ci->pid == pid) break;
 		ci = ci->next;
 	}
+#ifdef MC_DEBUG
+	if (!ci) Dprintf("read_child(%d) - pid is not in the list of children\n", pid);
+#endif
 	if (!ci) return R_NilValue; /* if the child doesn't exist anymore, returns NULL */
 	return read_child_ci(ci);	
 }
@@ -302,12 +338,12 @@ SEXP read_children(SEXP sTimeout) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Rprintf("read_children: maxfd=%d, timeout=%d:%d\n", maxfd, tv.tv_sec, tv.tv_usec);
+	Dprintf("read_children: maxfd=%d, timeout=%d:%d\n", maxfd, tv.tv_sec, tv.tv_usec);
 #endif
 	if (maxfd == 0) return R_NilValue; /* NULL signifies no children to tend to */
 	sr = select(maxfd+1, &fs, 0, 0, tvp);
 #ifdef MC_DEBUG
-	Rprintf("sr = %d\n", sr);
+	Dprintf("sr = %d\n", sr);
 #endif
 	if (sr < 0) {
 		perror("select");
@@ -320,7 +356,7 @@ SEXP read_children(SEXP sTimeout) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Rprintf("set ci=%p (%d, %d)\n", ci, ci?ci->pid:0, ci?ci->pfd:0);
+	Dprintf("set ci=%p (%d, %d)\n", ci, ci?ci->pid:0, ci?ci->pfd:0);
 #endif
 	/* this should never occur really - select signalled a read handle
 	   but none of the handles is set - let's treat it as a timeout */
@@ -367,11 +403,17 @@ SEXP mc_kill(SEXP sPid, SEXP sSig) {
 
 SEXP mc_exit(SEXP sRes) {
 	int res = asInteger(sRes);
+#ifdef MC_DEBUG
+	Dprintf("child %d: exit called\n", getpid());
+#endif
 	if (is_master) error("exit can only be used in a child process");
 	if (master_fd != -1) { /* send 0 to signify that we're leaving */
 		unsigned int len = 0;
 		write(master_fd, &len, sizeof(len));
 	}
+#ifdef MC_DEBUG
+	Dprintf("child %d: exiting\n", getpid());
+#endif
 	exit(res);
 	error("exit failed");
 	return R_NilValue;

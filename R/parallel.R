@@ -1,4 +1,4 @@
-parallel <- function(expr, mc.set.seed=FALSE) {
+parallel <- function(expr, name, mc.set.seed=FALSE) {
   f <- fork()
   env <- parent.frame()
   if (inherits(f, "masterProcess")) {
@@ -7,6 +7,7 @@ parallel <- function(expr, mc.set.seed=FALSE) {
     sendMaster(try(eval(expr, env), silent=TRUE))
     exit(0)
   }
+  if (!missing(name)) f$name <- as.character(name)[1]
   class(f) <- c("parallelJob", class(f))
   f
 }
@@ -19,10 +20,15 @@ collect <- function(jobs, wait=TRUE, timeout=0, intermediate=FALSE) {
     if (is.logical(s) || !length(s)) return(NULL)
     lapply(s, function(x) { r <- readChild(x); if (is.raw(r)) unserialize(r) else NULL })
   } else {
-    pids <- if (inherits(jobs, "process")) jobs$pid else if (is.list(jobs)) unlist(lapply(jobs, function(x) x$pid)) else jobs
-    if (!length(pids)) pids <- children()
+    pids <- if (inherits(jobs, "process") || is.list(jobs)) processID(jobs) else jobs
     if (!length(pids)) return(NULL)
-    res <- list()
+    if (!is.numeric(pids)) stop("invalid jobs argument")
+    pids <- as.integer(pids)
+    pnames <- as.character(pids)
+    if (!inherits(jobs, "process") && is.list(jobs))
+      for(i in seq(jobs)) if (!is.null(jobs[[i]]$name)) pnames[i] <- as.character(jobs[[i]]$name)
+    res <- lapply(pids, function(x) NULL)
+    names(res) <- pnames
     fin <- rep(FALSE, length(jobs))
     while (!all(fin)) {
       s <- selectChildren(pids, 0.5)
@@ -33,9 +39,8 @@ collect <- function(jobs, wait=TRUE, timeout=0, intermediate=FALSE) {
           if (is.raw(r)) res[[which(pid==pids)]] <- unserialize(r)
         }
         if (is.function(intermediate)) intermediate(res)
-      } else if (all(is.na(match(pids, children())))) break
+      } else if (all(is.na(match(pids, processID(children()))))) break
     }
-    names(res) <- pids
     res
   }
 }

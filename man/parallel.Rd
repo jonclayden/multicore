@@ -10,12 +10,13 @@
   \code{collect} collects results from parallel processes.
 }
 \usage{
-parallel(expr, mc.set.seed = FALSE)
+parallel(expr, name, mc.set.seed = FALSE)
 collect(jobs, wait = TRUE, timeout = 0, intermediate = FALSE)
 }
 \arguments{
 \item{expr}{expression to evaluate (do \emph{not} use any on-screen
 devices or GUI elements in this code)}
+\item{name}{an optional name (character vector of length one) that can be associated with the job.}
 \item{mc.set.seed}{if set to \code{TRUE} then the random number
 generator is seeded such that it is different from any other
 process. Otherwise it will be the same as in the current R session.}
@@ -36,7 +37,10 @@ parameter which is the list of results received so far.}
   \code{parallel} returns an object of the class \code{parallelJob}
   which is in turn a \code{childProcess}.
 
-  \code{collect} returns any results that are available in a list.
+  \code{collect} returns any results that are available in a list. The
+  results will have the same order as the specified jobs. If there are
+  multiple jobs and a job has a name it will be used to name the
+  result, otherwise its process ID will be used.
 }
 \details{
   \code{parallel} evaluates the \code{expr} expression in parallel to
@@ -74,6 +78,10 @@ parameter which is the list of results received so far.}
   collect(p, wait=FALSE, 10) # will retrieve the result (since it's fast)
   collect(p, wait=FALSE) # will signal the job as terminating
   collect(p, wait=FALSE) # there is no such job
+
+  # a naive parallelized lapply can be created using parallel alone:
+  jobs <- lapply(1:10, function(x) parallel(rnorm(x), name=x))
+  collect(jobs)
 }
 \author{Simon Urbanek}
 \keyword{interface}

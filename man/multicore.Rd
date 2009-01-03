@@ -49,6 +49,24 @@ handle that is passed to a child process by \code{\link{fork}}.
 \code{parallelJob} is a subclass of \code{childProcess} representing a
 child process created using the \code{\link{parallel}} function.
 }
+\section{Options}{
+By default functions that spawn jobs across cores use the
+\code{"cores"} option (see \code{\link{options}}) to determine how
+many cores (or CPUs) will be used (unless specified directly). If this
+option is not set, \emph{multicore} uses by default as many cores as
+there are available.
+
+The number of available cores is determined on startup using the
+(non-exported) \core{detectCores()} function. It should work on most
+commonly used unix systems (Mac OS X, Linux, Solaris and IRIX), but
+there is no standard way of determining the number of cores, so
+please contact me (with \code{sessionInfo()} output and the test) if
+you have tests for other platforms. If in doubt, use
+\code{multicore:::detectCores(all.tests=TRUE)} to see whether your
+platform is covered by one of the already existing tests. If multicore
+cannot determine the number of cores, it will default to 8 (which
+should be fine for most modern desktop systems).
+}
 \section{Warning}{
 \emph{multicore} uses the \code{fork} system call to spawn a copy of
 the current process which performs the compultations in

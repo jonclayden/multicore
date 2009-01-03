@@ -1,7 +1,21 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
-0.1-1	(under development)
+0.1-1	2009-01-03
+    o	added name parameter to parallel(), accordingly collect()
+	names the results if the job name is present
+
+    o	bug fix: collect() returned early if no jobs responded for a
+	while
+
+    o	bug fix: internal list of children could get corrupted when a
+	child was removed (all preceding children were removed as well)
+
+    o	added better debugging support. Set PKG_CFLAGS=-DMC_DEBUG to
+	enable debugging output on stdout (it is purposefully not sent
+	to the R console to prevent output processing issues in child
+	processes)
+
 
 0.1-0	2009-01-02
     o	initial release
