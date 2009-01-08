@@ -58,6 +58,7 @@ static int rm_child_(int pid) {
 				if (last_child == ci) last_child = prev;
 				free(ci);
 			}
+			kill(pid, SIGUSR1); /* send USR1 to the child to make sure it exits */
 			return 1;
 		}
 		prev = ci;
@@ -78,6 +79,19 @@ static int rm_child_(int pid) {
 #ifndef STDERR_FILENO
 #define STDERR_FILENO 2
 #endif
+
+static int child_can_exit = 0, child_exit_status = -1;
+
+static void child_sig_handler(int sig) {
+	if (sig == SIGUSR1) {
+#ifdef MC_DEBUG
+		Dprintf("child process %d got SIGUSR1; child_exit_status=%d\n", getpid(), child_exit_status);
+#endif
+		child_can_exit = 1;
+		if (child_exit_status >= 0)
+			exit(child_exit_status);
+	}
+}
 
 SEXP mc_fork() {
 	int pipefd[2];
@@ -104,6 +118,10 @@ SEXP mc_fork() {
 		/* re-map stdin */
 		dup2(sipfd[0], STDIN_FILENO);
 		close(sipfd[0]);
+		/* master uses USR1 to signal that the child process can terminate */
+		child_exit_status = -1;
+		child_can_exit = 0;
+		signal(SIGUSR1, child_sig_handler);
 #ifdef MC_DEBUG
 		Dprintf("child process %d started\n", getpid());
 #endif
@@ -469,6 +487,15 @@ SEXP mc_exit(SEXP sRes) {
 		unsigned int len = 0;
 		write(master_fd, &len, sizeof(len));
 	}
+	if (!child_can_exit) {
+#ifdef MC_DEBUG
+		Dprintf("child %d is waiting for permission to exit\n", getpid());
+#endif
+		while (!child_can_exit) {
+			sleep(1);
+		}
+	}
+		
 #ifdef MC_DEBUG
 	Dprintf("child %d: exiting\n", getpid());
 #endif

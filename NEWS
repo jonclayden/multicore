@@ -12,9 +12,19 @@
 	closeFD(), closeAll(), isChild(), childrenDescriptors() and
 	masterDescriptor()
 
+    o	selectChildren() implicitly checks for and removes zombies
+
     o	removed spurious debugging output in mclapply()
 
     o	fixed cases in which mclapply would not preserve names
+
+    o	fixed child list management
+
+    o	in order to make sure that children cannot die before the
+	master can collect results, children will specifically wait
+	for the master to allow them to exit (SIGUSR1 is used for this
+	purpose, so don't use it directly unless you want a child to
+	exit even if the master didn't release it).
 
 
 0.1-1	2009-01-03
