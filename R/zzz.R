@@ -11,7 +11,7 @@ detectCores <- function(all.tests = FALSE) {
   for (i in seq(systems))
     if(all.tests || length(grep(paste("^", names(systems)[i], sep=''), R.version$os)))
       for (cmd in systems[i]) {
-        a <- system(cmd, TRUE)[1]
+        a <- gsub("^ +","",system(cmd, TRUE)[1])
         if (length(grep("^[1-9]", a))) return(as.integer(a))
       }
   NA

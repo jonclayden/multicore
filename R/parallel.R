@@ -8,10 +8,13 @@ parallel <- function(expr, name, mc.set.seed=FALSE, silent=FALSE) {
     sendMaster(try(eval(expr, env), silent=TRUE))
     exit(0)
   }
-  if (!missing(name)) f$name <- as.character(name)[1]
+  if (!missing(name) && !is.null(name)) f$name <- as.character(name)[1]
   class(f) <- c("parallelJob", class(f))
   f
 }
+
+# synonym for parallel in case someone masks us
+mcparallel <- parallel
 
 collect <- function(jobs, wait=TRUE, timeout=0, intermediate=FALSE) {
   if (missing(jobs)) jobs <- children()

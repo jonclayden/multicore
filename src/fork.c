@@ -36,6 +36,9 @@ static int rm_child_(int pid) {
 #ifdef MC_DEBUG
 	Dprintf("removing child %d\n", pid);
 #endif
+	/* make sure we close all descriptors */
+	if (ci->pfd > 0) { close(ci->pfd); ci->pfd = -1; }
+	if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
 	while (ci) {
 		if (ci->pid == pid) {
 			if (!prev) {
@@ -77,9 +80,16 @@ SEXP mc_fork() {
 	SEXP res = allocVector(INTSXP, 3);
 	int *res_i = INTEGER(res);
 	if (pipe(pipefd)) error("Unable to create a pipe.");
-	if (pipe(sipfd)) error("Unable to create a pipe.");
+	if (pipe(sipfd)) {
+		close(pipefd[0]); close(pipefd[1]);
+		error("Unable to create a pipe.");
+	}
 	pid = fork();
-	if (pid == -1) error("Unable to fork.");
+	if (pid == -1) {
+		close(pipefd[0]); close(pipefd[1]);
+		close(sipfd[0]); close(sipfd[1]);
+		error("Unable to fork.");
+	}
 	res_i[0] = (int) pid;
 	if (pid == 0) { /* child */
 		close(pipefd[0]); /* close read end */
@@ -88,30 +98,6 @@ SEXP mc_fork() {
 		/* re-map stdin */
 		dup2(sipfd[0], STDIN_FILENO);
 		close(sipfd[0]);
-#if 0
-		/* remap stdin/out/err */
-		{
-			int pfd[2];
-			pipe(pfd);
-			dup2(pfd[1], STDOUT_FILENO);
-			close(pfd[1]);
-			// stdoutFD=pfd[0];
-		}
-		{
-			int pfd[2];
-			pipe(pfd);
-			dup2(pfd[1], STDERR_FILENO);
-			close(pfd[1]);
-			// stderrFD=pfd[0];
-		}
-		{
-			int pfd[2];
-			pipe(pfd);
-			dup2(pfd[0], STDIN_FILENO);
-			close(pfd[0]);
-			// stdinFD=pfd[1];
-		}
-#endif
 #ifdef MC_DEBUG
 		Dprintf("child process %d started\n", getpid());
 #endif
@@ -125,7 +111,7 @@ SEXP mc_fork() {
 #ifdef MC_DEBUG
 		Dprintf("parent registers new child %d\n", pid);
 #endif
-		/* register the new child and its pipe */
+		/* register the new child and its pipes */
 		if (children.pid == 0)
 			ci = &children;
 		else
@@ -305,8 +291,11 @@ static SEXP read_child_ci(child_info_t *ci) {
 			Dprintf(" read_child_ci(%d) - read %d at %d returned %d\n", ci->pid, len-i, i, n);
 #endif
 			if (n < 1) {
+				int pid = ci->pid;
 				close(fd);
-				return ScalarInteger(ci->pid);
+				ci->pfd = -1;
+				rm_child_(pid);
+				return ScalarInteger(pid);
 			}
 			i += n;
 		}

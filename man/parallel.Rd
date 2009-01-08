@@ -1,16 +1,23 @@
 \name{parallel}
 \alias{parallel}
 \alias{collect}
+\alias{mcparallel}
 \title{
   Evaluate an expression asynchronously in a separate process
 }
 \description{
   \code{parallel} starts a parallel process which evaluates the given expression.
 
+  \code{mcparallel} is a synonym for \code{parallel} that can be used
+  at top level if \code{parallel} is masked by other packages. It
+  should not be used in other packages since it's just a shortcut for
+  importing \code{multicore::parallel}.
+
   \code{collect} collects results from parallel processes.
 }
 \usage{
 parallel(expr, name, mc.set.seed = FALSE, silent = FALSE)
+mcparallel(expr, name, mc.set.seed = FALSE, silent = FALSE)
 collect(jobs, wait = TRUE, timeout = 0, intermediate = FALSE)
 }
 \arguments{

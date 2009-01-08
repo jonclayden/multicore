@@ -2,6 +2,9 @@
 ------------------------------
 
 0.1-2	(under development)
+    o	added mc.preschedule parameter to mclappy which (if FALSE)
+	allows on-demand distribution of FUN calls across cores.
+
     o	added "silent" parmeter to parallel() and mclapply()
 	suppressing output on stdout in child processes
 
@@ -10,6 +13,9 @@
 	masterDescriptor()
 
     o	removed spurious debugging output in mclapply()
+
+    o	fixed cases in which mclapply would not preserve names
+
 
 0.1-1	2009-01-03
     o	added name parameter to parallel(), accordingly collect()

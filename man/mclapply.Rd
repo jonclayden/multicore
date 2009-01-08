@@ -10,7 +10,7 @@
   element of \code{X}.
 }
 \usage{
-mclapply(X, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("cores"))
+mclapply(X, FUN, ..., mc.preschedule = TRUE, mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("cores"))
 }
 \arguments{
 \item{X}{a vector (atomic or list) or an expressions vector.  Other
@@ -18,6 +18,15 @@ objects (including classed objects) will be coerced by
 \code{\link{as.list}}.}
 \item{FUN}{the function to be applied to each element of \code{X}}
 \item{...}{optional arguments to \code{FUN}}
+\item{mc.preschedule}{if set to \code{TRUE} then the computation is
+first divided to (at most) as many jobs are there are cores and then
+the jobs are started, each job possibly covering more than one
+value. If set to \code{FALSE} then one job is spawned for each value
+of \code{X} sequentially (if used with \code{mc.set.seed=FALSE} then
+random number sequences will be identical for all values). The former
+is better for short computations or large number of values in
+\code{X}, the latter is better for jobs that have high variance of
+completion time and not too many values of \code{X}.}
 \item{mc.set.seed}{if set to \code{TRUE} then each parallel process
 first sets its seed to something different from other
 processes. Otherwise all processes start with the same (namely
@@ -32,11 +41,12 @@ will be spawned (at most)}
 }
 \details{
   \code{mclapply} is a parallelized version of \code{lapply}. By
-  default the input vector/list \code{X} is split into as many parts
-  as there are cores (currently the values are spread across the cores
-  sequentially, i.e. first value to core 1, second to core 2,
-  ... (core + 1)-th value to core 1 etc.) and then one process is
-  spawned to each core and the results are collected.
+  default (\code{mc.preschedule=TRUE}) the input vector/list \code{X}
+  is split into as many parts as there are cores (currently the values
+  are spread across the cores sequentially, i.e. first value to core
+  1, second to core 2, ... (core + 1)-th value to core 1 etc.) and
+  then one process is spawned to each core and the results are
+  collected.
 
   Due to the parallel nature of the execution random numbers are not
   sequential (in the random number sequence) as they would be in
@@ -46,12 +56,26 @@ will be spawned (at most)}
   In addition, each process is running the job inside \code{try(...,
   silent=TRUE)} so if error occur they will be stored as
   \code{try-error} objects in the list.
+
+  Note: Although the code attempts to avoid such issues
+  \code{mclapply} may have problems collecting results if other
+  unrelated jobs are spawned in parallel. Use \code{collect()} before
+  if there is a chance that other jobs may be floating around.
+
+  Also the number of file descriptors is usually limited by the
+  operating system, so you may have trouble using more than 100 cores
+  or so (see \code{ulimit -n} or similar in your OS documentation)
+  unless you raise the limit of permissible open file descriptors
+  (fork will fail with "unable to create a pipe").
 }
 \seealso{
   \code{\link{parallel}}, \code{\link{collect}}
 }
 \examples{
   mclapply(1:30, rnorm)
+  # use the same random numbers for all values
+  set.seed(1)
+  mclapply(1:30, rnorm, mc.preschedule=FALSE, mc.set.seed=FALSE)
 }
 \author{Simon Urbanek}
 \keyword{interface}

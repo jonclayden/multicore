@@ -10,7 +10,7 @@
 \description{
 \emph{multicore} is an R package that provides functions for parallel
 execution of R code on machines with multiple cores or CPUs. Unlike
-other parallel processing methods all jobs are share the full state of
+other parallel processing methods all jobs share the full state of
 R when spawned, so no data or code needs to be initialized. The
 actual spawning is very fast as well since no new R instance needs to
 be started.
@@ -47,7 +47,9 @@ however those are considered internal.
 handle that is passed to a child process by \code{\link{fork}}.
 
 \code{parallelJob} is a subclass of \code{childProcess} representing a
-child process created using the \code{\link{parallel}} function.
+child process created using the \code{\link{parallel}} function. It
+may (optionally) contain a \code{name} entry -- a character vector
+of the length one as the name of the job.
 }
 \section{Options}{
 By default functions that spawn jobs across cores use the
