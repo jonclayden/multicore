@@ -41,25 +41,31 @@ static int rm_child_(int pid) {
 	if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
 	while (ci) {
 		if (ci->pid == pid) {
-			if (!prev) {
-				if (ci->next) {
-					children.pid = ci->next->pid;
-					children.pfd = ci->next->pfd;
-					children.next = ci->next->next;
-				} else {
+			if (!prev) { /* ci is actually children */
+				if (ci->next) { /* there is a next? copy it into children */
+					child_info_t *next0 = ci->next;					
+					children = *next0;
+					free(next0);
+				} else { /* there is no next? reset everything */
 					children.pid = 0;
-					children.pfd = 0;
+					children.sifd = -1;
+					children.pfd = -1;
 					children.next = 0;
 				}
+				last_child = &children;
 			} else {
 				prev->next = ci->next;
+				if (last_child == ci) last_child = prev;
 				free(ci);
-				return 1;
 			}
+			return 1;
 		}
 		prev = ci;
 		ci = ci->next;
 	}
+#ifdef MC_DEBUG
+	Dprintf("WARNING: child %d was to be removed but it doesn't exist\n", pid);
+#endif
 	return 0;
 }
 
@@ -198,7 +204,7 @@ SEXP send_child_stdin(SEXP sPid, SEXP what) {
 }
 
 SEXP select_children(SEXP sTimeout, SEXP sWhich) {
-	int maxfd = 0, sr, wstat;
+	int maxfd = 0, sr, wstat, zombies = 0;
 	unsigned int wlen = 0, wcount = 0;
 	SEXP res;
 	int *res_i, *which = 0;
@@ -220,6 +226,7 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 	while (waitpid(-1, &wstat, WNOHANG) > 0) {}; /* check for zombies */
 	FD_ZERO(&fs);
 	while (ci && ci->pid) {
+		if (ci->pfd == -1) zombies++;
 		if (ci->pfd > maxfd) maxfd = ci->pfd;
 		if (ci->pfd > 0) {
 			if (which) { /* check for the FD only if it's on the list */
@@ -231,8 +238,22 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, timeout=%d:%d\n", maxfd, wlen, wcount, tv.tv_sec, tv.tv_usec);
+	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, zombies=%d, timeout=%d:%d\n", maxfd, wlen, wcount, zombies, tv.tv_sec, tv.tv_usec);
 #endif
+	if (zombies) { /* oops, this whould never really hapen, but when signals are involved it might */
+		while (zombies) { /* this is rather more complicated than it should be if we used pointers to delete, but well ... */
+			ci = &children;
+			while (ci) {
+				if (ci->pfd == -1) {
+					rm_child_(ci->pid);
+					zombies--;
+					break;
+				}
+				ci = ci->next;
+			}
+			if (!ci) break;
+		}
+	}
 	if (maxfd == 0 || (wlen && !wcount)) return R_NilValue; /* NULL signifies no children to tend to */
 	sr = select(maxfd + 1, &fs, 0, 0, tvp);
 #ifdef MC_DEBUG
