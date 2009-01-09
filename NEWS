@@ -1,8 +1,8 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
-0.1-2	(under development)
-    o	added mc.preschedule parameter to mclappy which (if FALSE)
+0.1-2	2009-01-09
+    o	added mc.preschedule parameter to mclappy() which (if FALSE)
 	allows on-demand distribution of FUN calls across cores.
 
     o	added "silent" parmeter to parallel() and mclapply()
@@ -16,7 +16,7 @@
 
     o	removed spurious debugging output in mclapply()
 
-    o	fixed cases in which mclapply would not preserve names
+    o	fixed cases in which mclapply() would not preserve names
 
     o	fixed child list management
 
