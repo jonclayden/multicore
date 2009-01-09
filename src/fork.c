@@ -36,11 +36,12 @@ static int rm_child_(int pid) {
 #ifdef MC_DEBUG
 	Dprintf("removing child %d\n", pid);
 #endif
-	/* make sure we close all descriptors */
-	if (ci->pfd > 0) { close(ci->pfd); ci->pfd = -1; }
-	if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
 	while (ci) {
 		if (ci->pid == pid) {
+			/* make sure we close all descriptors */
+			if (ci->pfd > 0) { close(ci->pfd); ci->pfd = -1; }
+			if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
+			/* now remove it from the list */
 			if (!prev) { /* ci is actually children */
 				if (ci->next) { /* there is a next? copy it into children */
 					child_info_t *next0 = ci->next;					
@@ -258,11 +259,14 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 #ifdef MC_DEBUG
 	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, zombies=%d, timeout=%d:%d\n", maxfd, wlen, wcount, zombies, tv.tv_sec, tv.tv_usec);
 #endif
-	if (zombies) { /* oops, this whould never really hapen, but when signals are involved it might */
+	if (zombies) { /* oops, this should never really hapen - it did while we had a bug in rm_child_ but hopefully not anymore */
 		while (zombies) { /* this is rather more complicated than it should be if we used pointers to delete, but well ... */
 			ci = &children;
 			while (ci) {
 				if (ci->pfd == -1) {
+#ifdef MC_DEBUG
+					Dprintf("detected zombie: pid=%d, pfd=%d, sifd=%d\n", ci->pid, ci->pfd, ci->sifd);
+#endif
 					rm_child_(ci->pid);
 					zombies--;
 					break;

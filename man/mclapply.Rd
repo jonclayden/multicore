@@ -57,12 +57,7 @@ will be spawned (at most)}
   silent=TRUE)} so if error occur they will be stored as
   \code{try-error} objects in the list.
 
-  Note: Although the code attempts to avoid such issues
-  \code{mclapply} may have problems collecting results if other
-  unrelated jobs are spawned in parallel. Use \code{collect()} before
-  if there is a chance that other jobs may be floating around.
-
-  Also the number of file descriptors is usually limited by the
+  Note: the number of file descriptors is usually limited by the
   operating system, so you may have trouble using more than 100 cores
   or so (see \code{ulimit -n} or similar in your OS documentation)
   unless you raise the limit of permissible open file descriptors
