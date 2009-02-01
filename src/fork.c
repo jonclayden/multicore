@@ -26,13 +26,13 @@ typedef struct child_info {
 	struct child_info *next;
 } child_info_t;
 
-static child_info_t children, *last_child = &children;
+static child_info_t *children;
 
 static int master_fd = -1;
 static int is_master = 1;
 
 static int rm_child_(int pid) {
-	child_info_t *ci = &children, *prev = 0;
+	child_info_t *ci = children, *prev = 0;
 #ifdef MC_DEBUG
 	Dprintf("removing child %d\n", pid);
 #endif
@@ -42,23 +42,9 @@ static int rm_child_(int pid) {
 			if (ci->pfd > 0) { close(ci->pfd); ci->pfd = -1; }
 			if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
 			/* now remove it from the list */
-			if (!prev) { /* ci is actually children */
-				if (ci->next) { /* there is a next? copy it into children */
-					child_info_t *next0 = ci->next;					
-					children = *next0;
-					free(next0);
-				} else { /* there is no next? reset everything */
-					children.pid = 0;
-					children.sifd = -1;
-					children.pfd = -1;
-					children.next = 0;
-				}
-				last_child = &children;
-			} else {
-				prev->next = ci->next;
-				if (last_child == ci) last_child = prev;
-				free(ci);
-			}
+			if (prev) prev->next = ci->next;
+			else children = ci->next;
+			free(ci);
 			kill(pid, SIGUSR1); /* send USR1 to the child to make sure it exits */
 			return 1;
 		}
@@ -137,16 +123,13 @@ SEXP mc_fork() {
 		Dprintf("parent registers new child %d\n", pid);
 #endif
 		/* register the new child and its pipes */
-		if (children.pid == 0)
-			ci = &children;
-		else
-			last_child->next = ci = (child_info_t*) malloc(sizeof(child_info_t));
+		ci = (child_info_t*) malloc(sizeof(child_info_t));
 		if (!ci) error("Memory allocation error.");
 		ci->pid = pid;
 		ci->pfd = pipefd[0];
 		ci->sifd= sipfd[1];
-		ci->next = 0;
-		last_child = ci;
+		ci->next = children;
+		children = ci;
 	}
 	return res;
 }
@@ -204,7 +187,7 @@ SEXP send_child_stdin(SEXP sPid, SEXP what) {
 	int pid = asInteger(sPid);
 	if (!is_master) error("only master (parent) process can send data to a child process");
 	if (TYPEOF(what) != RAWSXP) error("what must be a raw vector");
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	while (ci) {
 		if (ci->pid == pid) break;
 		ci = ci -> next;
@@ -227,7 +210,7 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 	unsigned int wlen = 0, wcount = 0;
 	SEXP res;
 	int *res_i, *which = 0;
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	fd_set fs;
 	struct timeval tv = { 0, 0 }, *tvp = &tv;
 	if (isReal(sTimeout) && LENGTH(sTimeout) == 1) {
@@ -257,11 +240,11 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, zombies=%d, timeout=%d:%d\n", maxfd, wlen, wcount, zombies, tv.tv_sec, tv.tv_usec);
+	Dprintf("select_children: maxfd=%d, wlen=%d, wcount=%d, zombies=%d, timeout=%d:%d\n", maxfd, wlen, wcount, zombies, (int)tv.tv_sec, (int)tv.tv_usec);
 #endif
 	if (zombies) { /* oops, this should never really hapen - it did while we had a bug in rm_child_ but hopefully not anymore */
 		while (zombies) { /* this is rather more complicated than it should be if we used pointers to delete, but well ... */
-			ci = &children;
+			ci = children;
 			while (ci) {
 				if (ci->pfd == -1) {
 #ifdef MC_DEBUG
@@ -286,13 +269,13 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		return ScalarLogical(0); /* FALSE on select error */
 	}
 	if (sr < 1) return ScalarLogical(1); /* TRUE on timeout */
-	ci = &children;
+	ci = children;
 	maxfd = 0;
 	while (ci && ci->pid) { /* pass 1 - count the FDs (in theory not necessary since that's what select should have returned)  */
 		if (ci->pfd > 0 && FD_ISSET(ci->pfd, &fs)) maxfd++;
 		ci = ci -> next;
 	}
-	ci = &children;
+	ci = children;
 #ifdef MC_DEBUG
 	Dprintf(" - read select %d children: ", maxfd);
 #endif
@@ -355,7 +338,7 @@ static SEXP read_child_ci(child_info_t *ci) {
 
 SEXP read_child(SEXP sPid) {
 	int pid = asInteger(sPid);
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	while (ci) {
 		if (ci->pid == pid) break;
 		ci = ci->next;
@@ -369,7 +352,7 @@ SEXP read_child(SEXP sPid) {
 
 SEXP read_children(SEXP sTimeout) {
 	int maxfd = 0, sr, wstat;
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	fd_set fs;
 	struct timeval tv = { 0, 0 }, *tvp = &tv;
 	if (isReal(sTimeout) && LENGTH(sTimeout) == 1) {
@@ -388,7 +371,7 @@ SEXP read_children(SEXP sTimeout) {
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Dprintf("read_children: maxfd=%d, timeout=%d:%d\n", maxfd, tv.tv_sec, tv.tv_usec);
+	Dprintf("read_children: maxfd=%d, timeout=%d:%d\n", maxfd, (int)tv.tv_sec, (int)tv.tv_usec);
 #endif
 	if (maxfd == 0) return R_NilValue; /* NULL signifies no children to tend to */
 	sr = select(maxfd+1, &fs, 0, 0, tvp);
@@ -400,13 +383,13 @@ SEXP read_children(SEXP sTimeout) {
 		return ScalarLogical(0); /* FALSE on select error */
 	}
 	if (sr < 1) return ScalarLogical(1); /* TRUE on timeout */
-	ci = &children;
+	ci = children;
 	while (ci && ci->pid) {
 		if (ci->pfd > 0 && FD_ISSET(ci->pfd, &fs)) break;
 		ci = ci -> next;
 	}
 #ifdef MC_DEBUG
-	Dprintf("set ci=%p (%d, %d)\n", ci, ci?ci->pid:0, ci?ci->pfd:0);
+	Dprintf("set ci=%p (%d, %d)\n", (void*) ci, ci?ci->pid:0, ci?ci->pfd:0);
 #endif
 	/* this should never occur really - select signalled a read handle
 	   but none of the handles is set - let's treat it as a timeout */
@@ -426,7 +409,7 @@ SEXP mc_children() {
 	unsigned int count = 0;
 	SEXP res;
 	int *pids;
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	while (ci && ci->pid > 0) {
 		count++;
 		ci = ci->next;
@@ -434,7 +417,7 @@ SEXP mc_children() {
 	res = allocVector(INTSXP, count);
 	if (count) {
 		pids = INTEGER(res);
-		ci = &children;
+		ci = children;
 		while (ci && ci->pid > 0) {
 			(pids++)[0] = ci->pid;
 			ci = ci->next;
@@ -447,7 +430,7 @@ SEXP mc_fds(SEXP sFdi) {
 	int fdi = asInteger(sFdi);
 	unsigned int count = 0;
 	SEXP res;
-	child_info_t *ci = &children;
+	child_info_t *ci = children;
 	while (ci && ci->pid > 0) {
 		count++;
 		ci = ci->next;
@@ -455,7 +438,7 @@ SEXP mc_fds(SEXP sFdi) {
 	res = allocVector(INTSXP, count);
 	if (count) {
 		int *fds = INTEGER(res);
-		ci = &children;
+		ci = children;
 		while (ci && ci->pid > 0) {
 			(fds++)[0] = (fdi == 0) ? ci->pfd : ci->sifd;
 			ci = ci->next;
