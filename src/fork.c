@@ -10,19 +10,50 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifndef WIN32
+/* --- plain unix parte --- */
 #include <sys/select.h>
 #include <sys/wait.h>
+#else
+/* --- work arounds for Windows --- */
+#include <windows.h>
+#include "winfix.h"
+#define read _read
+#define write _write
+#define close _close
+#define select pipe_select
+#endif
 #include <signal.h>
 
 #include <R.h>
 #include <Rinternals.h>
 
+#ifndef FILE_LOG
 /* use printf instead of Rprintf for debugging to avoid forked console interactions */
 #define Dprintf printf
+#else
+/* logging into a file */
+#include <stdarg.h>
+void Dprintf(char *format, ...) {
+	va_list (args);
+	va_start (args, format);
+	FILE *f = fopen("mc_debug.txt", "a");
+	if (f) {
+		fprintf(f, "%d> ", getpid());
+		vfprintf(f, format, args);
+		fclose(f);
+	}
+	va_end (args);
+}
+#endif
 
 typedef struct child_info {
 	pid_t pid;
 	int pfd, sifd;
+#ifdef WIN32
+	HANDLE mutex; /* mutex for releasing a child */
+#endif
 	struct child_info *next;
 } child_info_t;
 
@@ -38,6 +69,9 @@ static int rm_child_(int pid) {
 #endif
 	while (ci) {
 		if (ci->pid == pid) {
+#ifdef WIN32
+			HANDLE mutex = ci->mutex;
+#endif
 			/* make sure we close all descriptors */
 			if (ci->pfd > 0) { close(ci->pfd); ci->pfd = -1; }
 			if (ci->sifd > 0) { close(ci->sifd); ci->sifd = -1; }
@@ -45,7 +79,14 @@ static int rm_child_(int pid) {
 			if (prev) prev->next = ci->next;
 			else children = ci->next;
 			free(ci);
+#ifdef WIN32
+			ReleaseMutex(mutex);
+			CloseHandle(mutex);
+			/* just in case doesn't really work ... */
+			TerminateProcess((HANDLE) pid, 0);
+#else
 			kill(pid, SIGUSR1); /* send USR1 to the child to make sure it exits */
+#endif
 			return 1;
 		}
 		prev = ci;
@@ -69,6 +110,7 @@ static int rm_child_(int pid) {
 
 static int child_can_exit = 0, child_exit_status = -1;
 
+#ifndef WIN32
 static void child_sig_handler(int sig) {
 	if (sig == SIGUSR1) {
 #ifdef MC_DEBUG
@@ -79,6 +121,9 @@ static void child_sig_handler(int sig) {
 			exit(child_exit_status);
 	}
 }
+#else
+HANDLE child_release_mutex;
+#endif
 
 SEXP mc_fork() {
 	int pipefd[2];
@@ -91,10 +136,19 @@ SEXP mc_fork() {
 		close(pipefd[0]); close(pipefd[1]);
 		error("Unable to create a pipe.");
 	}
+#ifdef WIN32
+	{
+		SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+		child_release_mutex = CreateMutex(&sa, TRUE, NULL);
+	}
+#endif
 	pid = fork();
 	if (pid == -1) {
 		close(pipefd[0]); close(pipefd[1]);
 		close(sipfd[0]); close(sipfd[1]);
+#ifdef WIN32
+		CloseHandle(child_release_mutex);
+#endif
 		error("Unable to fork.");
 	}
 	res_i[0] = (int) pid;
@@ -108,7 +162,9 @@ SEXP mc_fork() {
 		/* master uses USR1 to signal that the child process can terminate */
 		child_exit_status = -1;
 		child_can_exit = 0;
+#ifndef WIN32
 		signal(SIGUSR1, child_sig_handler);
+#endif
 #ifdef MC_DEBUG
 		Dprintf("child process %d started\n", getpid());
 #endif
@@ -128,6 +184,33 @@ SEXP mc_fork() {
 		ci->pid = pid;
 		ci->pfd = pipefd[0];
 		ci->sifd= sipfd[1];
+#ifdef WIN32
+		ci->mutex = child_release_mutex;
+		/* since we're now forked, the pipes (and mutex) should not be inherited by other children (note that this may mess up FD handling but children should not use those anyway) */
+		SetHandleInformation((HANDLE)_get_osfhandle(ci->pfd), HANDLE_FLAG_INHERIT, 0);
+		SetHandleInformation((HANDLE)_get_osfhandle(ci->sifd), HANDLE_FLAG_INHERIT, 0);
+		SetHandleInformation(child_release_mutex, HANDLE_FLAG_INHERIT, 0);
+#if 0
+		/* also Windows doesn't support concurrent stdout/err, so we can close them */
+		close(STDOUT_FILENO);
+		close(STDERR_FILENO);
+		/* ok, the next one is insane - we abuse R_SetWin32 to clear out (possibly suicidal) callbacks */
+		structRstart s;
+		s.rhome = R_Home;
+		s.home = getenv("HOME");
+		s.CharacterMode = RTerm;
+		s.ReadConsole 
+		s.WriteConsole
+		s.WriteConsoleEx
+		s.CallBack
+		s.ShowMessage
+		s.YesNoCancel
+		s.Busy
+		s.NoRenviron = 1;
+		R_SetWin32(&s);
+#endif
+		
+#endif
 		ci->next = children;
 		children = ci;
 	}
@@ -206,7 +289,7 @@ SEXP send_child_stdin(SEXP sPid, SEXP what) {
 }
 
 SEXP select_children(SEXP sTimeout, SEXP sWhich) {
-	int maxfd = 0, sr, wstat, zombies = 0;
+	int maxfd = 0, sr, zombies = 0;
 	unsigned int wlen = 0, wcount = 0;
 	SEXP res;
 	int *res_i, *which = 0;
@@ -225,7 +308,9 @@ SEXP select_children(SEXP sTimeout, SEXP sWhich) {
 		which = INTEGER(sWhich);
 		wlen = LENGTH(sWhich);
 	}
-	while (waitpid(-1, &wstat, WNOHANG) > 0) {}; /* check for zombies */
+#ifndef WIN32
+	{ int wstat; while (waitpid(-1, &wstat, WNOHANG) > 0) {}; } /* check for zombies */
+#endif
 	FD_ZERO(&fs);
 	while (ci && ci->pid) {
 		if (ci->pfd == -1) zombies++;
@@ -351,7 +436,7 @@ SEXP read_child(SEXP sPid) {
 }
 
 SEXP read_children(SEXP sTimeout) {
-	int maxfd = 0, sr, wstat;
+	int maxfd = 0, sr;
 	child_info_t *ci = children;
 	fd_set fs;
 	struct timeval tv = { 0, 0 }, *tvp = &tv;
@@ -363,7 +448,9 @@ SEXP read_children(SEXP sTimeout) {
 			tv.tv_usec = (int) ((tov - ((double) tv.tv_sec)) * 1000000.0);
 		}
 	}
-	while (waitpid(-1, &wstat, WNOHANG) > 0) {}; /* check for zombies */
+#ifndef WIN32
+	{ int wstat; while (waitpid(-1, &wstat, WNOHANG) > 0) {}; } /* check for zombies */
+#endif
 	FD_ZERO(&fs);
 	while (ci && ci->pid) {
 		if (ci->pfd > maxfd) maxfd = ci->pfd;
@@ -457,11 +544,16 @@ SEXP mc_is_child() {
 }
 
 SEXP mc_kill(SEXP sPid, SEXP sSig) {
+#ifdef WIN32
+	error("signals are not supported on Windows");
+	return R_NilValue;
+#else
 	int pid = asInteger(sPid);
 	int sig = asInteger(sSig);
 	if (kill((pid_t) pid, sig))
 		error("Kill failed.");
 	return ScalarLogical(1);
+#endif
 }
 
 SEXP mc_exit(SEXP sRes) {
@@ -477,6 +569,10 @@ SEXP mc_exit(SEXP sRes) {
 		close(master_fd);
 		master_fd = -1;
 	}
+#ifdef WIN32
+	/* master locks the mutex until it's ready to collect the result */
+	WaitForSingleObject(child_release_mutex, INFINITE);
+#else
 	if (!child_can_exit) {
 #ifdef MC_DEBUG
 		Dprintf("child %d is waiting for permission to exit\n", getpid());
@@ -485,6 +581,7 @@ SEXP mc_exit(SEXP sRes) {
 			sleep(1);
 		}
 	}
+#endif
 		
 #ifdef MC_DEBUG
 	Dprintf("child %d: exiting\n", getpid());
