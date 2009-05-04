@@ -4,6 +4,8 @@
 0.1-4	(under development)
     o	added (experimental) support for Windows
 
+    o	added cores detection for FreeBSD (thanks to Gunnar Schaefer)
+
 0.1-3	2009-02-02
     o	simplify the internal management of child processes and
 	consequently remove bugs that lead to poor feeding of cores
