@@ -159,6 +159,7 @@ static ZwWriteVirtualMemory_t ZwWriteVirtualMemory;
 
 #pragma mark -- helper functions --
 
+#ifdef INHERIT_ALL
 /* set all handles belonging to this process as inheritable */
 static void set_inherit_all()
 {
@@ -185,6 +186,7 @@ static void set_inherit_all()
 	}
 	free(p);
 }
+#endif
 
 /* setjmp env for the jump back into the fork() function */
 static jmp_buf jenv;
