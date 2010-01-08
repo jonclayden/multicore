@@ -56,6 +56,12 @@ will be spawned (at most)}
   In addition, each process is running the job inside \code{try(...,
   silent=TRUE)} so if error occur they will be stored as
   \code{try-error} objects in the list.
+  
+  Note: if you interrupt \code{mcapply} it will NOT interrupt the
+  children and you become responsible for them. If you want to kill all
+  child processes, use \code{kill(children())} and then
+  \code{collect()} to release them. Any child that has finished or died
+  will wait until the parent process collects it.
 
   Note: the number of file descriptors is usually limited by the
   operating system, so you may have trouble using more than 100 cores
