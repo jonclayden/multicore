@@ -35,5 +35,6 @@ int pipe_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *errorfds, s
 	return 1;
 }
 #else
-;
+/* this is only a dummy to avoid warning by various compilers about empty files, superfluous semicolons etc. */
+typedef int foo_t;
 #endif
