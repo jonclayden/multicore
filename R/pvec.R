@@ -19,7 +19,9 @@ pvec <- function(v, FUN, ..., mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOpt
   }
   FUN <- match.fun(FUN)
   jobs <- lapply(seq(cores), function(i) parallel(FUN(l[[i]], ...), name=i, mc.set.seed=mc.set.seed, silent=mc.silent))
-  res <- do.call(c, collect(jobs))
+  res <- collect(jobs)
+  names(res) <- NULL
+  res <- do.call(c, res)
   if (length(res) != n) warning("some results may be missing, folded or caused an error")
   res
 }
