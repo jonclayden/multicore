@@ -1,4 +1,4 @@
-pvec <- function(v, FUN, ..., mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOption("cores")) {
+pvec <- function(v, FUN, ..., mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOption("cores"), mc.cleanup=TRUE) {
   if (!is.vector(v)) stop("v must be a vector")
   
   env <- parent.frame()
@@ -17,6 +17,21 @@ pvec <- function(v, FUN, ..., mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOpt
     se <- si + c(sl, 0L) - 1L
     lapply(1:cores, function(ix) v[si[ix]:se[ix]])
   }
+  jobs <- NULL
+  cleanup <- function() {
+    ## kill children if cleanup is requested
+    if (length(jobs) && mc.cleanup) {
+      ## first take care of uncollected children
+      collect(children(jobs), FALSE)
+      kill(children(jobs), if (is.integer(mc.cleanup)) mc.cleanup else SIGTERM)
+      collect(children(jobs))
+    }
+    if (length(jobs)) {
+      ## just in case there are zombies
+      collect(children(jobs), FALSE)
+    }
+  }
+  on.exit(cleanup())
   FUN <- match.fun(FUN)
   jobs <- lapply(seq(cores), function(i) parallel(FUN(l[[i]], ...), name=i, mc.set.seed=mc.set.seed, silent=mc.silent))
   res <- collect(jobs)

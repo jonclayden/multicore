@@ -10,7 +10,8 @@ function must be a vectorized map, i.e. it takes a vector input and
 creates a vector output of exactly the same length as the input.
 }
 \usage{
-pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("cores"))
+pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE,
+     mc.cores = getOption("cores"), mc.cleanup = TRUE)
 }
 \arguments{
   \item{v}{vector to operate on}
@@ -25,6 +26,9 @@ pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE, mc.cores = getOption("c
     affected).}
   \item{mc.cores}{The number of cores to use, i.e. how many processes
     will be spawned (at most)}
+  \item{mc.cleanup}{flag specifying whether children should be
+    terminated when the master is aborted (see description of this
+    argument in \code{\link{mclapply}} for details)}
 }
 \details{
   \code{pvec} parallelizes \code{FUN(x, ...)} where \code{FUN} is a

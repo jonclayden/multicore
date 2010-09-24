@@ -1,9 +1,23 @@
-mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOption("cores")) {
+mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.silent=FALSE, mc.cores=getOption("cores"), mc.cleanup=TRUE) {
   env <- parent.frame()
   cores <- mc.cores
   if (is.null(cores)) cores <- volatile$detectedCores
   cores <- as.integer(cores)
-
+  jobs <- list()
+  cleanup <- function() {
+    # kill children if cleanup is requested
+    if (length(jobs) && mc.cleanup) {
+      ## first take care of uncollected children
+      collect(children(jobs), FALSE)
+      kill(children(jobs), if (is.integer(mc.cleanup)) mc.cleanup else SIGTERM)
+      collect(children(jobs))
+    }
+    if (length(jobs)) {
+      ## just in case there are zombies
+      collect(children(jobs), FALSE)
+    }
+  }
+  on.exit(cleanup())
   if (!mc.preschedule) { # sequential (non-scheduled)
     FUN <- match.fun(FUN)
     if (length(X) <= cores) { # all-out, we can use one-shot parallel
@@ -66,7 +80,7 @@ mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.sile
       sendMaster(try(lapply(S, FUN, ...), silent=TRUE))
       exit(0)
     }
-    ch[[core]] <<- f
+    jobs[[core]] <<- ch[[core]] <<- f
     cp[core] <<- f$pid
     NULL
   }
