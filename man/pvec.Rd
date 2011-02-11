@@ -7,7 +7,8 @@ Parallelize a vector map function
 \code{pvec} parellelizes the execution of a function on vector elements
 by splitting the vector and submitting each part to one core. The
 function must be a vectorized map, i.e. it takes a vector input and
-creates a vector output of exactly the same length as the input.
+creates a vector output of exactly the same length as the input which
+doesn't depend on the partition of the vector.
 }
 \usage{
 pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE,
@@ -39,7 +40,15 @@ pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE,
   \code{FUN} is run. Although it is in principle possible to use
   functions that are not necessarily maps, the interpretation would be
   case-specific as the splitting is in theory arbitrary and a warning is
-  given in such cases. 
+  given in such cases.
+
+  The major difference between \code{pvec} and \code{\link{mclapply}} is
+  that \code{mclapply} will run \code{FUN} on each element separately
+  whereas \code{pvec} assumes that \code{c(FUN(x[1]), FUN(x[2]))} is
+  equivalent to \code{FUN(x[1:2])} and thus will split into as many
+  calls to \code{FUN} as there are cores, each handling a subset
+  vector. This makes it much more efficient than \code{mclapply} but
+  requires the above assumption on \code{FUN}.
 }
 \value{
   The result of the computation - in a successful case it should be of
@@ -75,9 +84,14 @@ pvec(v, FUN, ..., mc.set.seed = TRUE, mc.silent = FALSE,
   # this takes 4s on a 2.6GHz Mac Pro
   system.time(a <- as.POSIXct(dates))
 
-  # this takes 0.5s on the same machine (16 HT)
+  # this takes 0.5s on the same machine (8 cores, 16 HT)
   system.time(b <- pvec(dates, as.POSIXct))
 
   stopifnot(all(a == b))
+
+  # using mclapply for this is much slower because each value
+  # will require a separate call to as.POSIXct()
+  system.time(c <- unlist(mclapply(dates, as.POSIXct)))
+
 }
 \keyword{interface}

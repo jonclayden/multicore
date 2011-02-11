@@ -1,7 +1,7 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
-0.1-4	(under development)
+0.1-4	2011-02-11
     o	added (experimental) support for Windows
 	Note: it (sort of) works on Windows 2k and XP only. Vista and
 	Windows 7 is not supported due to changes to the kernel. Since
@@ -23,7 +23,8 @@
 
     o	multicore now attempts to automatically disable event loop
 	processing on Mac OS X in forked children. For Quartz
-	Cocoa event loop this requires R 2.13.0 or higher.
+	Cocoa event loop this requires R 2.12.2 or higher.
+	This allows the use of multicore in R for Mac GUI.
 
 
 0.1-3	2009-02-02

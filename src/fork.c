@@ -4,7 +4,7 @@
    interface to system-level tools for sawning copies of the current
    process and IPC
 
-   (C)Copyright 2008 Simon Urbanek
+   (C)Copyright 2008-11 Simon Urbanek
 
    see package DESCRIPTION for licensing terms */
 
@@ -656,6 +656,9 @@ SEXP mc_exit(SEXP sRes) {
 	return R_NilValue;
 }
 
+/* this is not really necessary, since from R you can simply use
+   is.loaded("QuartzCocoa_InhibitEventLoop") and it will be TRUE if we
+   got to it. */
 SEXP mc_can_disable_quartz() {
 	return Rf_ScalarLogical(getQuartzSymbols());
 }
