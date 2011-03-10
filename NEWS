@@ -1,7 +1,7 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
-0.1-5	(under development)
+0.1-5	2011-03-09
     o	fix an issue in mclapply() and mc.prechedule = FALSE when NULL
 	results are involved (thanks to Ralf Tautenhahn for reporting)
 
