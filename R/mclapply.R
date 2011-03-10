@@ -42,8 +42,11 @@ mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.sile
           ji <- which(jobsp == ch)[1]
           ci <- jobid[ji]
           r <- readChild(ch)
-          if (is.raw(r))  res[[ci]] <- unserialize(r)
-	  else {
+          if (is.raw(r)) {
+            child.res <- unserialize(r)
+            # we can't jsut assign it since a NULL assignment would remove it from the list
+            if (!is.null(child.res)) res[[ci]] <- child.res
+          } else {
 	    fin[ci] <- TRUE
 #	    cat("fin: "); print(fin)
 #	    cat("res: "); print(unlist(lapply(res, is.null)))

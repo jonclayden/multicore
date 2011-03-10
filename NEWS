@@ -1,6 +1,10 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
+0.1-5	(under development)
+    o	fix an issue in mclapply() and mc.prechedule = FALSE when NULL
+	results are involved (thanks to Ralf Tautenhahn for reporting)
+
 0.1-4	2011-02-11
     o	added (experimental) support for Windows
 	Note: it (sort of) works on Windows 2k and XP only. Vista and

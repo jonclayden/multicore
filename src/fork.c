@@ -202,6 +202,7 @@ SEXP mc_fork() {
 
 	pid = fork();
 	if (pid == -1) {
+		perror("fork");
 		close(pipefd[0]); close(pipefd[1]);
 		close(sipfd[0]); close(sipfd[1]);
 #ifdef WIN32
