@@ -18,10 +18,20 @@ detectCores <- function(all.tests = FALSE) {
   NA
 }
 
+.register.addr <- c("mc_fork", "read_children", "read_child", "select_children",
+                    "rm_child", "send_master", "send_child_stdin", "mc_exit", "mc_children",
+                    "mc_fds", "mc_master_fd", "mc_is_child", "close_stdout", "close_stderr",
+                    "close_fds", "create_list", "mc_kill")
+
 .onLoad <- function(libname, pkgname) {
   cores <- detectCores()
   volatile$detectedCoresSuccess <- !is.na(cores)
   if (is.na(cores)) cores <- 8L # a fallback expecting higher-end desktop ...
   volatile$detectedCores <- cores
+  ## register all native routines
+  env <- topenv()
+  addr <- getNativeSymbolInfo(.register.addr, pkgname)
+  for (name in .register.addr) 
+    env[[name]] <- addr[[name]]$address
   TRUE
 }

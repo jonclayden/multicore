@@ -14,17 +14,17 @@ SIGUSR1 <- 30L
 SIGUSR2 <- 31L
 
 fork <- function() {
-  r <- .Call("mc_fork", PACKAGE="multicore")
+  r <- .Call(mc_fork)
   structure(list(pid=r[1], fd=r[2:3]), class=c(ifelse(r[1]!=0L,"childProcess","masterProcess"),"process"))
 }
 
 readChildren <- function(timeout=0)
-  .Call("read_children", as.double(timeout), PACKAGE="multicore")
+  .Call(read_children, as.double(timeout))
 
 readChild <- function(child) {
   if (inherits(child, "process")) child <- processID(child)
   if (!is.numeric(child)) stop("invalid child argument")
-  .Call("read_child", as.integer(child), PACKAGE="multicore")
+  .Call(read_child, as.integer(child))
 }
 
 selectChildren <- function(children=NULL, timeout=0) {
@@ -32,23 +32,23 @@ selectChildren <- function(children=NULL, timeout=0) {
   if (inherits(children, "process")) children <- processID(children)
   if (is.list(children)) children <- unlist(lapply(children, function(x) if (inherits(x, "process")) x$pid else stop("children must be a list of processes or a single process")))
   if (!is.numeric(children)) stop("children must be a list of processes or a single process")
-  .Call("select_children", as.double(timeout), as.integer(children))
+  .Call(select_children, as.double(timeout), as.integer(children))
 }
 
 rmChild <- function(child) {
   if (inherits(child, "process")) child <- processID(child)
   if (!is.numeric(child)) stop("invalid child argument")
-  .Call("rm_child", as.integer(child), PACKAGE="multicore")
+  .Call(rm_child, as.integer(child))
 }
 
 kill <- function(process, signal=SIGINT) {
   process <- processID(process)
-  unlist(lapply(process, function(p) .Call("mc_kill", as.integer(p), as.integer(signal))))
+  unlist(lapply(process, function(p) .Call(mc_kill, as.integer(p), as.integer(signal))))
 }
 
 sendMaster <- function(what) {
   if (!is.raw(what)) what <- serialize(what, NULL, FALSE)
-  .Call("send_master", what, PACKAGE="multicore")
+  .Call(send_master, what)
 }
 
 processID <- function(process)
@@ -60,31 +60,31 @@ sendChildStdin <- function(child, what) {
   child <- as.integer(child)
   if (is.character(what)) what <- charToRaw(paste(what, collapse='\n'))
   if (!is.raw(what)) stop("what must be a character or raw vector")
-  unlist(lapply(child, function(p) .Call("send_child_stdin", p, what)))
+  unlist(lapply(child, function(p) .Call(send_child_stdin, p, what)))
 }
 
 exit <- function(exit.code=0L, send=NULL) {
   if (!is.null(send)) try(sendMaster(send), silent=TRUE)
-  .Call("mc_exit", as.integer(exit.code), PACKAGE="multicore")
+  .Call(mc_exit, as.integer(exit.code))
 }
 
 children <- function(select) {
-  p <- .Call("mc_children", PACKAGE="multicore")
+  p <- .Call(mc_children)
   if (!missing(select)) p <- p[p %in% processID(select)]
   lapply(p, function(x) structure(list(pid=x), class=c("childProcess", "process")))
 }
 
 childrenDescriptors <- function(index=0L)
-  .Call("mc_fds", as.integer(index), PACKAGE="multicore")
+  .Call(mc_fds, as.integer(index))
 
-masterDescriptor <- function() .Call("mc_master_fd", PACKAGE="multicore")
+masterDescriptor <- function() .Call(mc_master_fd)
 
-isChild <- function() .Call("mc_is_child", PACKAGE="multicore")
+isChild <- function() .Call(mc_is_child)
 
 # those could be really written as closeFD(1L) and closeFD(2L), but historically ...
-closeStdout <- function() .Call("close_stdout", PACKAGE="multicore")
-closeStderr <- function() .Call("close_stderr", PACKAGE="multicore")
-closeFD <- function(fds) .Call("close_fds", as.integer(fds), PACKAGE="multicore")
+closeStdout <- function() .Call(close_stdout)
+closeStderr <- function() .Call(close_stderr)
+closeFD <- function(fds) .Call(close_fds, as.integer(fds))
 closeAll <- function(includeStd=FALSE) {
   if (!isChild()) { warning("closeAll() is a no-op in the master process"); return(invisible(FALSE)) }
   fds <- masterDescriptor()

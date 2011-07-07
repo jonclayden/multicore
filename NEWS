@@ -1,9 +1,21 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
+0.1-6	(under development)
+    o	mclapply() will issue a warning if any of the results is of
+	the class "try-error". For prescheduled calls the warning will
+	include the index of the core(s) that failed - to facilitate
+	debugging of the user code.
+
+    o	minor performance improvements were made by creating results
+	lists in C code and by resolving all native routines at load
+	time.
+
+
 0.1-5	2011-03-09
     o	fix an issue in mclapply() and mc.prechedule = FALSE when NULL
 	results are involved (thanks to Ralf Tautenhahn for reporting)
+
 
 0.1-4	2011-02-11
     o	added (experimental) support for Windows
