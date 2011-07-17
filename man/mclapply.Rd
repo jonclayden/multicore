@@ -50,8 +50,13 @@ suppressed for all parallel processes spawned (stderr is not affected).}
  A list.
 }
 \details{
-  \code{mclapply} is a parallelized version of \code{lapply}. By
-  default (\code{mc.preschedule=TRUE}) the input vector/list \code{X}
+  \code{mclapply} is a parallelized version of \code{lapply}, but there
+  is an important difference: \code{mclapply} does not affect the
+  calling environment in any way, the only side-effect is the delivery
+  of the result (with the exception of a fall-back to \code{lapply} when
+  there is only one core).
+
+  By default (\code{mc.preschedule=TRUE}) the input vector/list \code{X}
   is split into as many parts as there are cores (currently the values
   are spread across the cores sequentially, i.e. first value to core
   1, second to core 2, ... (core + 1)-th value to core 1 etc.) and
