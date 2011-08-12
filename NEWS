@@ -11,6 +11,9 @@
 	lists in C code and by resolving all native routines at load
 	time.
 
+    o	bugfix: errors in prescheduled mclapply could result in
+	incorrectly returned objects
+
 
 0.1-5	2011-03-09
     o	fix an issue in mclapply() and mc.prechedule = FALSE when NULL

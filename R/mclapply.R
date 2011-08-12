@@ -105,8 +105,12 @@ mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.sile
         fin[core] <- TRUE
       } else if (is.raw(a)) {
         core <- which(cp == attr(a, "pid"))
-        job.res[[core]] <- ijr <- unserialize(a)
-        if (inherits(ijr, "try-error")) has.errors <- c(has.errors, core)
+        ijr <- unserialize(a)
+        if (inherits(ijr, "try-error")) {
+          has.errors <- c(has.errors, core)
+          ijr <- rep(list(ijr), length(schedule[[core]]))
+        }
+        job.res[[core]] <- ijr
         dr[core] <- TRUE
       }
     }
