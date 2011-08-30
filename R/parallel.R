@@ -5,7 +5,7 @@ parallel <- function(expr, name, mc.set.seed=FALSE, silent=FALSE) {
     on.exit(exit(1, structure("fatal error in wrapper code",class="try-error")))
     if (isTRUE(mc.set.seed)) set.seed(Sys.getpid())
     if (isTRUE(silent)) closeStdout()
-    sendMaster(try(eval(expr, env), silent=TRUE))
+    sendMaster(serialize(try(eval(expr, env), silent=TRUE), NULL, FALSE))
     exit(0)
   }
   if (!missing(name) && !is.null(name)) f$name <- as.character(name)[1]
