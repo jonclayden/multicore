@@ -1,7 +1,7 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
-0.1-7	(under development)
+0.1-7	2011-09-07
     o	fix a bug introduced in 0.1-6 error checking for
 	non-pre-scheduled jobs
 
