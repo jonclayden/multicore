@@ -24,7 +24,7 @@ mclapply <- function(X, FUN, ..., mc.preschedule=TRUE, mc.set.seed=TRUE, mc.sile
       jobs <- lapply(seq(X), function(i) parallel(FUN(X[[i]], ...), name=names(X)[i], mc.set.seed=mc.set.seed, silent=mc.silent))
       res <- collect(jobs)
       if (length(res) == length(X)) names(res) <- names(X)
-      has.errors <- sum(sapply(res), inherits, "try-error")
+      has.errors <- sum(sapply(res, inherits, "try-error"))
       if (has.errors) warning(has.errors, "of all function calls resulted in an error")
       return(res)
     } else { # more complicated, we have to wait for jobs selectively

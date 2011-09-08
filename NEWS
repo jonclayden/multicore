@@ -1,6 +1,11 @@
  NEWS/ChangeLog for multicore
 ------------------------------
 
+0.1-7	(under development)
+    o	fix a bug introduced in 0.1-6 error checking for
+	non-pre-scheduled jobs
+
+
 0.1-6	2011-09-02
     o	mclapply() will issue a warning if any of the results is of
 	the class "try-error". For prescheduled calls the warning will
